@@ -41,14 +41,17 @@ class KademliaNetwork extends Actor with Timers with ActorLogging {
   @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
   def waitForResults: Receive = {
     case ResultWorker.Results(results) =>
-      val builder = new StringBuffer()
-      builder.append("Result:\n")
-
       type Effect[A] = StateT[Id, StringBuffer, A]
       implicit val ser: GraphSerializer[Effect] = new StringSerializer[Effect]
-      GraphzGenerator.generate[Effect](results.toList).runS(builder)
 
+      val comps = GraphTransformer.stronglyConnectedComponents(results)
+      log.info(s"Found ${comps.size} strongly connected component(s)")
+
+      val builder = new StringBuffer()
+      builder.append("Result:\n")
+      GraphzGenerator.generate[Effect](results.toList).runS(builder)
       log.info(builder.toString)
+
       context.stop(self)
   }
 
