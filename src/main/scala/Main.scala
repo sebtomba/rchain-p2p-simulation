@@ -1,20 +1,21 @@
 import scala.concurrent.duration._
-import scala.io.StdIn
 
 import akka.actor.ActorSystem
+import akka.util.Timeout
 
-import coop.rchain.simulation.discovery.KademliaNetwork
+import coop.rchain.simulation.discovery.{ActorTerminator, KademliaNetwork}
 import coop.rchain.simulation.discovery.KademliaNetwork._
 
 object Main {
   @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
   def main(args: Array[String]): Unit = {
-    val system = ActorSystem("kademlia")
+    implicit val system: ActorSystem = ActorSystem("kademlia")
+    implicit val timeout: Timeout    = Timeout(1.hour)
 
     try {
       val network = system.actorOf(KademliaNetwork.props)
       network ! Spawn(100, 20.seconds)
-      StdIn.readLine()
+      ActorTerminator.awaitTermination(network)
     } finally {
       system.terminate()
     }
