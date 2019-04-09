@@ -12,6 +12,7 @@ import cats.mtl.implicits._
 import coop.rchain.comm.PeerNode
 import coop.rchain.graphz.{GraphSerializer, StringSerializer}
 import coop.rchain.simulation.discovery.analysis.{GraphTransformer, GraphzGenerator}
+import coop.rchain.catscontrib.ski.kp
 
 class KademliaNetwork extends Actor with Timers with ActorLogging {
   import KademliaNetwork._
@@ -19,14 +20,14 @@ class KademliaNetwork extends Actor with Timers with ActorLogging {
 
   def receive: Receive = {
     case Spawn(nodes, stopAfter) =>
-      val bootstrap = createNode(0)
+      val bootstrap = createNode()
       bootstrap ! Identify
       context.become(waiteForBootstrap(nodes, stopAfter))
   }
 
   def waiteForBootstrap(nodes: Int, stopAfter: FiniteDuration): Receive = {
     case Identification(bootstrap) =>
-      (1 until Math.max(1, nodes)).foreach(id => createNode(id, Some(bootstrap)))
+      (1 until Math.max(1, nodes)).foreach(kp(createNode(Some(bootstrap))))
       timers.startSingleTimer(StopNetwork, StopNetwork, stopAfter)
       context.become(running(bootstrap))
   }
@@ -66,8 +67,8 @@ class KademliaNetwork extends Actor with Timers with ActorLogging {
       context.stop(self)
   }
 
-  private def createNode(id: Int, bootstrap: Option[PeerNode] = None): ActorRef = {
-    val node = context.actorOf(KademliaNode.props(id, Random.nextInt(5).seconds, 3.second, 20))
+  private def createNode(bootstrap: Option[PeerNode] = None): ActorRef = {
+    val node = context.actorOf(KademliaNode.props(Random.nextInt(5).seconds, 3.second, 20))
     bootstrap.foreach(b => node ! Bootstrap(b))
     node
   }

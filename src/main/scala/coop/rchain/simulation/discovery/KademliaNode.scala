@@ -17,7 +17,6 @@ import monix.execution.Scheduler
 
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
 class KademliaNode(
-    id: Int,
     initialDelay: FiniteDuration,
     discoveryInterval: FiniteDuration,
     addressSize: Int
@@ -29,7 +28,7 @@ class KademliaNode(
   private val local: PeerNode = {
     val key: Array[Byte] = Array.ofDim(addressSize)
     Random.nextBytes(key)
-    PeerNode(NodeIdentifier(id, key), self)
+    PeerNode(NodeIdentifier(key), self)
   }
   private implicit val scheduler: Scheduler               = Scheduler(context.dispatcher)
   private implicit val kademliaRPC: KademliaRPC[Task]     = ActorKademliaRPC(local, context.system)
@@ -83,9 +82,8 @@ object KademliaNode {
   case object Discover
 
   def props(
-      id: Int,
       initialDelay: FiniteDuration,
       discoveryInterval: FiniteDuration,
       addressSize: Int
-  ): Props = Props(new KademliaNode(id, initialDelay, discoveryInterval, addressSize))
+  ): Props = Props(new KademliaNode(initialDelay, discoveryInterval, addressSize))
 }

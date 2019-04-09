@@ -34,8 +34,8 @@ object GraphTransformer {
       .flatMap {
         case (node, peers) =>
           peers.toStream.map { p =>
-            if (node.id.id < p.id.id) node -> p
-            else p                         -> node
+            if (node.id.toString < p.id.toString) node -> p
+            else p                                     -> node
           }
       }
       .distinct

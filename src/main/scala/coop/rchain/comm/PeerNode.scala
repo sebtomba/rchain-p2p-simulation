@@ -4,7 +4,7 @@ import akka.actor.ActorRef
 
 import coop.rchain.crypto.codec.Base16
 
-final case class NodeIdentifier(id: Int, key: Seq[Byte]) {
+final case class NodeIdentifier(key: Seq[Byte]) {
   private val keyString         = Base16.encode(key.toArray)
   override def toString: String = keyString
   def toShortString: String     = toString.take(7)
