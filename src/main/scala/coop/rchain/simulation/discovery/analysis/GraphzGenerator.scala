@@ -1,4 +1,4 @@
-package coop.rchain.simulation.discovery
+package coop.rchain.simulation.discovery.analysis
 
 import cats.Monad
 import cats.implicits._

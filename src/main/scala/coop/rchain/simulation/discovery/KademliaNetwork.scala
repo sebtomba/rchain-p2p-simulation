@@ -11,6 +11,7 @@ import cats.mtl.implicits._
 
 import coop.rchain.comm.PeerNode
 import coop.rchain.graphz.{GraphSerializer, StringSerializer}
+import coop.rchain.simulation.discovery.analysis.{GraphTransformer, GraphzGenerator}
 
 class KademliaNetwork extends Actor with Timers with ActorLogging {
   import KademliaNetwork._
@@ -46,6 +47,16 @@ class KademliaNetwork extends Actor with Timers with ActorLogging {
 
       val comps = GraphTransformer.stronglyConnectedComponents(results)
       log.info(s"Found ${comps.size} strongly connected component(s)")
+
+      val cliques = GraphTransformer.maximalCliques(GraphTransformer.removeAdjacentEdges(results))
+      val distinctCliques = cliques.foldLeft(Seq.empty[Set[PeerNode]]) { (acc, ps) =>
+        if (acc.forall(_.intersect(ps).isEmpty)) ps +: acc
+        else acc
+      }
+      log.info(s"Found ${distinctCliques.size} distinct maximal clique(s)")
+      cliques.zipWithIndex.foreach {
+        case (ps, i) => log.info(s"clique $i: ${ps.map(_.id.toShortString).mkString(", ")}")
+      }
 
       val builder = new StringBuffer()
       builder.append("Result:\n")
