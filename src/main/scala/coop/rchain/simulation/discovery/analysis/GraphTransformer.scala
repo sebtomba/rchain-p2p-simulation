@@ -26,6 +26,17 @@ object GraphTransformer {
     alg.asScala.map(_.asScala.toSet).toSeq.sortWith(_.size > _.size)
   }
 
+  def selectCliques(cliques: Seq[Set[PeerNode]]): Seq[Set[PeerNode]] = {
+    def loop(c: Seq[Set[PeerNode]], result: Seq[Set[PeerNode]] = Nil): Seq[Set[PeerNode]] =
+      c match {
+        case Nil => result
+        case h +: t =>
+          loop(t.map(_ -- h).filter(_.size > 2).sortWith(_.size > _.size), h +: result)
+      }
+
+    loop(cliques).reverse
+  }
+
   def getAllPeers(graph: Map[PeerNode, Seq[PeerNode]]): Set[PeerNode] =
     (graph.keys.toStream ++ graph.values.toStream.flatMap(_.toStream)).toSet
 
