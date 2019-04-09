@@ -46,6 +46,9 @@ class KademliaNetwork extends Actor with Timers with ActorLogging {
       type Effect[A] = StateT[Id, StringBuffer, A]
       implicit val ser: GraphSerializer[Effect] = new StringSerializer[Effect]
 
+      implicit val ord: Ordering[PeerNode] =
+        (x: PeerNode, y: PeerNode) => x.id.toString.compare(y.id.toString)
+
       val comps = GraphTransformer.stronglyConnectedComponents(results)
       log.info(s"Found ${comps.size} strongly connected component(s)")
 
