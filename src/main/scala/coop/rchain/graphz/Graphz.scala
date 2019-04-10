@@ -174,7 +174,7 @@ object Graphz {
     else
       Some("[" + attr.map(t => t._1 + "=" + t._2).mkString(" ") + "]")
 
-  def nodesMkStr(nodes: Seq[String]): String = {
+  def nodesMkStr(nodes: Set[String]): String = {
     val str = nodes.map(quote)
     if (str.size == 1) str.head
     else str.mkString("{", ",", "}")
@@ -185,10 +185,10 @@ object Graphz {
 
 class Graphz[F[_]: Monad](gtype: GraphType, t: String)(implicit ser: GraphSerializer[F]) {
 
-  def edge(edg: (String, String)): F[Unit] = edges(Seq(edg._1), Seq(edg._2))
+  def edge(edg: (String, String)): F[Unit] = edges(Set(edg._1), Set(edg._2))
   def edges(
-      src: Seq[String],
-      dst: Seq[String],
+      src: Set[String],
+      dst: Set[String],
       style: Option[GraphStyle] = None,
       arrowHead: Option[GraphArrowType] = None
   ): F[Unit] = {
@@ -206,8 +206,8 @@ class Graphz[F[_]: Monad](gtype: GraphType, t: String)(implicit ser: GraphSerial
     )
   }
 
-  def edges(src: String, dst: Seq[String]): F[Unit] =
-    edges(Seq(src), dst)
+  def edges(src: String, dst: Set[String]): F[Unit] =
+    edges(Set(src), dst)
 
   def node(
       name: String,

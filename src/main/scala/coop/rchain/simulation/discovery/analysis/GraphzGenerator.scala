@@ -20,7 +20,7 @@ object GraphzGenerator {
     )
 
   def generate[G[_]: Monad: GraphSerializer](
-      graph: List[(PeerNode, Seq[PeerNode])]
+      graph: List[(PeerNode, Set[PeerNode])]
   ): G[Graphz[G]] =
     for {
       g <- initGraph[G]("kademlia")

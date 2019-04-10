@@ -13,10 +13,10 @@ class ResultWorker() extends Actor {
       context.become(waitForResults(nodes.size, Map.empty))
   }
 
-  def waitForResults(count: Int, results: Map[PeerNode, Seq[PeerNode]]): Receive = {
+  def waitForResults(count: Int, results: Map[PeerNode, Set[PeerNode]]): Receive = {
     case KademliaNode.Peers(node, peers, _) =>
       if (!results.contains(node)) {
-        val resultsNext = results + (node -> peers)
+        val resultsNext = results + (node -> peers.toSet)
         if (resultsNext.size == count) {
           context.parent ! Results(resultsNext)
           context.stop(self)
@@ -27,7 +27,7 @@ class ResultWorker() extends Actor {
 
 object ResultWorker {
   final case class CollectResults(nodes: Seq[ActorRef])
-  final case class Results(results: Map[PeerNode, Seq[PeerNode]])
+  final case class Results(results: Map[PeerNode, Set[PeerNode]])
 
   def props: Props = Props(new ResultWorker())
 }

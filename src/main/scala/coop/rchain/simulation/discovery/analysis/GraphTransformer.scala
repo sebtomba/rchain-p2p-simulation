@@ -8,7 +8,9 @@ import org.jgrapht.graph._
 import org.jgrapht.traverse.DepthFirstIterator
 
 object GraphTransformer {
-  def stronglyConnectedComponents[Vertex](graph: Map[Vertex, Seq[Vertex]]): Seq[Set[Vertex]] = {
+  type Graph[Vertex] = Map[Vertex, Set[Vertex]]
+
+  def stronglyConnectedComponents[Vertex](graph: Graph[Vertex]): Seq[Set[Vertex]] = {
     val g = new SimpleDirectedGraph[Vertex, DefaultEdge](classOf[DefaultEdge])
     getAllPeers(graph).foreach(g.addVertex)
     graph.foreach { case (node, peers) => peers.foreach(g.addEdge(node, _)) }
@@ -16,7 +18,7 @@ object GraphTransformer {
     alg.getStronglyConnectedComponents.asScala.map(c => new DepthFirstIterator(c).asScala.toSet)
   }
 
-  def maximalCliques[Vertex](graph: Map[Vertex, Seq[Vertex]]): Seq[Set[Vertex]] = {
+  def maximalCliques[Vertex](graph: Graph[Vertex]): Seq[Set[Vertex]] = {
     val g = new SimpleGraph[Vertex, DefaultEdge](classOf[DefaultEdge])
     getAllPeers(graph).foreach(g.addVertex)
     graph.foreach { case (node, peers) => peers.foreach(g.addEdge(node, _)) }
@@ -35,12 +37,10 @@ object GraphTransformer {
     loop(cliques).reverse
   }
 
-  def getAllPeers[Vertex](graph: Map[Vertex, Seq[Vertex]]): Set[Vertex] =
+  def getAllPeers[Vertex](graph: Graph[Vertex]): Set[Vertex] =
     (graph.keys.toStream ++ graph.values.toStream.flatMap(_.toStream)).toSet
 
-  def removeAdjacentEdges[Vertex: Ordering](
-      graph: Map[Vertex, Seq[Vertex]]
-  ): Map[Vertex, Seq[Vertex]] =
+  def removeAdjacentEdges[Vertex: Ordering](graph: Graph[Vertex]): Graph[Vertex] =
     graph.toStream
       .flatMap {
         case (node, peers) =>
@@ -50,19 +50,19 @@ object GraphTransformer {
           }
       }
       .distinct
-      .foldLeft(Map.empty[Vertex, Seq[Vertex]]) { (acc, p) =>
+      .foldLeft(Map.empty[Vertex, Set[Vertex]]) { (acc, p) =>
         val (p1, p2) = p
-        val s        = p2 +: acc.getOrElse(p1, Seq.empty)
+        val s        = acc.getOrElse(p1, Set.empty) + p2
         acc + (p1 -> s)
       }
 
   def removeNodes[Vertex](
-      graph: Map[Vertex, Seq[Vertex]],
+      graph: Graph[Vertex],
       nodes: Set[Vertex]
-  ): Map[Vertex, Seq[Vertex]] =
+  ): Graph[Vertex] =
     graph.toStream
       .filter(e => !nodes.contains(e._1))
-      .map { case (node, peers) => node -> peers.filter(p => !nodes.contains(p)) }
+      .map { case (node, peers) => node -> (peers -- nodes) }
       .filter(_._2.nonEmpty)
       .toMap
 
