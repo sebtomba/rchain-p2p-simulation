@@ -52,7 +52,8 @@ class KademliaNetwork extends Actor with Timers with ActorLogging {
       val comps = GraphTransformer.stronglyConnectedComponents(results)
       log.info(s"Found ${comps.size} strongly connected component(s)")
 
-      val cliques         = GraphTransformer.maximalCliques(GraphTransformer.removeAdjacentEdges(results))
+      val cliques =
+        GraphTransformer.maximalCliques(GraphTransformer.reduceToUndirectedConnectedGraph(results))
       val distinctCliques = GraphTransformer.selectCliques(cliques)
       log.info(s"Found ${distinctCliques.size} distinct maximal clique(s)")
       distinctCliques.zipWithIndex.foreach {

@@ -40,7 +40,7 @@ object GraphTransformer {
   def getAllPeers[Vertex](graph: Graph[Vertex]): Set[Vertex] =
     (graph.keys.toStream ++ graph.values.toStream.flatMap(_.toStream)).toSet
 
-  def removeAdjacentEdges[Vertex: Ordering](graph: Graph[Vertex]): Graph[Vertex] =
+  def reduceToUndirectedConnectedGraph[Vertex: Ordering](graph: Graph[Vertex]): Graph[Vertex] =
     graph.toStream
       .flatMap {
         case (node, peers) =>
@@ -49,7 +49,9 @@ object GraphTransformer {
             else p                                 -> node
           }
       }
-      .distinct
+      .groupBy(identity)
+      .filter(_._2.size > 1) // remove edges that have no adjacent edges
+      .keys
       .foldLeft(Map.empty[Vertex, Set[Vertex]]) { (acc, p) =>
         val (p1, p2) = p
         val s        = acc.getOrElse(p1, Set.empty) + p2
