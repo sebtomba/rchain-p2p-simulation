@@ -3,7 +3,6 @@ package coop.rchain.simulation.discovery.analysis
 import cats.Monad
 import cats.implicits._
 
-import coop.rchain.comm.PeerNode
 import coop.rchain.graphz._
 
 object GraphzGenerator {
@@ -20,13 +19,35 @@ object GraphzGenerator {
     )
 
   def generate[G[_]: Monad: GraphSerializer](
-      graph: List[(PeerNode, Set[PeerNode])]
+      graph: NetworkTransformer.NetworkGraph
   ): G[Graphz[G]] =
     for {
       g <- initGraph[G]("kademlia")
-      _ <- graph.traverse {
-            case (node, peers) => g.edges(node.id.toShortString, peers.map(_.id.toShortString))
+      _ <- graph.toList.traverse {
+            case (node, peers) => generateNetworkHierarchy(g, 1, node, peers)
           }
       _ <- g.close
     } yield g
+
+  private def generateNetworkHierarchy[G[_]: Monad: GraphSerializer](
+      g: Graphz[G],
+      level: Int,
+      node: NetworkElement,
+      peers: Set[NetworkElement]
+  ): G[Unit] = node match {
+    case NetworkElement(id, Leaf) =>
+      g.edges(id.toShortString, peers.map(_.id.toShortString))
+    case NetworkElement(id, clique @ Clique(_)) =>
+      g.subgraph {
+        for {
+          sg <- Graphz.subgraph[G](s"clique_${id.toShortString}", Graph, level)
+          _  <- sg.node(id.toShortString)
+          _  <- sg.edges(id.toShortString, peers.map(_.id.toShortString))
+          _ <- clique.members.toList
+                .traverse(generateNetworkHierarchy(sg, level + 1, _, Set(node)))
+          _ <- sg.close
+        } yield sg
+      }
+  }
+
 }

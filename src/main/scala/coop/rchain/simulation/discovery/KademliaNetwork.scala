@@ -9,9 +9,9 @@ import cats._
 import cats.data._
 import cats.mtl.implicits._
 
-import coop.rchain.comm.PeerNode
+import coop.rchain.comm.{NodeIdentifier, PeerNode}
 import coop.rchain.graphz.{GraphSerializer, StringSerializer}
-import coop.rchain.simulation.discovery.analysis.{GraphTransformer, GraphzGenerator}
+import coop.rchain.simulation.discovery.analysis._
 import coop.rchain.catscontrib.ski.kp
 
 class KademliaNetwork extends Actor with Timers with ActorLogging {
@@ -46,30 +46,39 @@ class KademliaNetwork extends Actor with Timers with ActorLogging {
       type Effect[A] = StateT[Id, StringBuffer, A]
       implicit val ser: GraphSerializer[Effect] = new StringSerializer[Effect]
 
-      implicit val ord: Ordering[PeerNode] =
-        (x: PeerNode, y: PeerNode) => x.id.toString.compare(y.id.toString)
+//      implicit val ord: Ordering[PeerNode] =
+//        (x: PeerNode, y: PeerNode) => x.id.toString.compare(y.id.toString)
+//
+//      val comps = GraphTransformer.stronglyConnectedComponents(results)
+//      log.info(s"Found ${comps.size} strongly connected component(s)")
+//
+//      val cliques =
+//        GraphTransformer.maximalCliques(GraphTransformer.reduceToUndirectedConnectedGraph(results))
+//      val distinctCliques = GraphTransformer.selectCliques(cliques)
+//      log.info(s"Found ${distinctCliques.size} distinct maximal clique(s)")
+//      distinctCliques.zipWithIndex.foreach {
+//        case (ps, i) => log.info(s"clique $i: ${ps.map(_.id.toShortString).mkString(", ")}")
+//      }
 
-      val comps = GraphTransformer.stronglyConnectedComponents(results)
-      log.info(s"Found ${comps.size} strongly connected component(s)")
-
-      val cliques =
-        GraphTransformer.maximalCliques(GraphTransformer.reduceToUndirectedConnectedGraph(results))
-      val distinctCliques = GraphTransformer.selectCliques(cliques)
-      log.info(s"Found ${distinctCliques.size} distinct maximal clique(s)")
-      distinctCliques.zipWithIndex.foreach {
-        case (ps, i) => log.info(s"clique $i: ${ps.map(_.id.toShortString).mkString(", ")}")
-      }
-
+      val graph   = NetworkTransformer.networkFromPeerNodes(results)
       val builder = new StringBuffer()
       builder.append("Result:\n")
-      GraphzGenerator.generate[Effect](results.toList).runS(builder)
+      GraphzGenerator
+        .generate[Effect](
+          NetworkTransformer.reduceToNetworkOfCliques(graph, () => nodeIdentifier())
+        )
+        .runS(builder)
       log.info(builder.toString)
 
       context.stop(self)
   }
 
+  private def nodeIdentifier(): NodeIdentifier = NodeIdentifier.random(20)
+
   private def createNode(bootstrap: Option[PeerNode] = None): ActorRef = {
-    val node = context.actorOf(KademliaNode.props(Random.nextInt(5).seconds, 3.second, 20))
+    val node = context.actorOf(
+      KademliaNode.props(nodeIdentifier(), Random.nextInt(5).seconds, 3.second)
+    )
     bootstrap.foreach(b => node ! Bootstrap(b))
     node
   }

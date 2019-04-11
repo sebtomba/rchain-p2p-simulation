@@ -1,7 +1,6 @@
 package coop.rchain.simulation.discovery
 
 import scala.concurrent.duration._
-import scala.util.Random
 
 import akka.actor._
 import akka.pattern.pipe
@@ -17,19 +16,15 @@ import monix.execution.Scheduler
 
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
 class KademliaNode(
+    id: NodeIdentifier,
     initialDelay: FiniteDuration,
-    discoveryInterval: FiniteDuration,
-    addressSize: Int
+    discoveryInterval: FiniteDuration
 ) extends Actor
     with Timers
     with ActorLogging {
   import KademliaNode._
 
-  private val local: PeerNode = {
-    val key: Array[Byte] = Array.ofDim(addressSize)
-    Random.nextBytes(key)
-    PeerNode(NodeIdentifier(key), self)
-  }
+  private val local: PeerNode                             = PeerNode(id, self)
   private implicit val scheduler: Scheduler               = Scheduler(context.dispatcher)
   private implicit val kademliaRPC: KademliaRPC[Task]     = ActorKademliaRPC(local, context.system)
   private implicit val kademliaStore: KademliaStore[Task] = KademliaStore.table[Task](local.id)
@@ -82,8 +77,8 @@ object KademliaNode {
   case object Discover
 
   def props(
+      id: NodeIdentifier,
       initialDelay: FiniteDuration,
-      discoveryInterval: FiniteDuration,
-      addressSize: Int
-  ): Props = Props(new KademliaNode(initialDelay, discoveryInterval, addressSize))
+      discoveryInterval: FiniteDuration
+  ): Props = Props(new KademliaNode(id, initialDelay, discoveryInterval))
 }

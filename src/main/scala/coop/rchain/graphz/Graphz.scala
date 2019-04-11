@@ -96,6 +96,7 @@ object Graphz {
       name: String,
       gtype: GraphType,
       subgraph: Boolean = false,
+      level: Int = 0,
       comment: Option[String] = None,
       label: Option[String] = None,
       outputorder: Option[GraphOutputMode] = None,
@@ -111,15 +112,14 @@ object Graphz {
       implicit ser: GraphSerializer[F]
   ): F[Graphz[F]] = {
 
-    def insert(str: Option[String], v: String => String): F[Unit] = {
-      val indent = if (subgraph) tab + tab else tab
+    val indent = tabs(level + 1)
+
+    def insert(str: Option[String], v: String => String): F[Unit] =
       str.fold(().pure[F])(s => ser.push(indent + v(s)))
-    }
 
     for {
       _ <- comment.fold(().pure[F])(c => ser.push(s"// $c"))
-      t = if (subgraph) s"$tab$tab" else tab
-      _ <- ser.push(head(gtype, subgraph, name))
+      _ <- ser.push(head(gtype, subgraph, level, name))
       _ <- insert(label, l => s"label=${quote(l)}")
       _ <- insert(style, s => s"style=$s")
       _ <- insert(size, s => s"size=${quote(s)}")
@@ -130,12 +130,13 @@ object Graphz {
       _ <- insert(bgcolor, s => s"bgcolor=${quote(s)}")
       _ <- insert(attrMkStr(node), n => s"node $n")
       _ <- insert(attrMkStr(edge), n => s"edge $n")
-    } yield new Graphz[F](gtype, t)
+    } yield new Graphz[F](gtype, indent)
   }
 
   def subgraph[F[_]: Monad](
       name: String,
       gtype: GraphType,
+      level: Int,
       label: Option[String] = None,
       style: Option[String] = None,
       color: Option[String] = None,
@@ -147,6 +148,7 @@ object Graphz {
       name,
       gtype,
       subgraph = true,
+      level = level,
       label = label,
       style = style,
       color = color,
@@ -155,9 +157,9 @@ object Graphz {
       edge = edge
     )
 
-  private def head(gtype: GraphType, subgraph: Boolean, name: String): String = {
+  private def head(gtype: GraphType, subgraph: Boolean, level: Int, name: String): String = {
     val prefix = (gtype, subgraph) match {
-      case (_, true)    => s"${tab}subgraph"
+      case (_, true)    => s"${tabs(level)}subgraph"
       case (Graph, _)   => s"graph"
       case (DiGraph, _) => s"digraph"
     }
@@ -181,6 +183,10 @@ object Graphz {
   }
 
   val tab = "  "
+  def tabs(level: Int): String = {
+    assert(level >= 0, "Level must not be negative")
+    (0 until level).map(_ => tab).mkString
+  }
 }
 
 class Graphz[F[_]: Monad](gtype: GraphType, t: String)(implicit ser: GraphSerializer[F]) {
@@ -208,6 +214,9 @@ class Graphz[F[_]: Monad](gtype: GraphType, t: String)(implicit ser: GraphSerial
 
   def edges(src: String, dst: Set[String]): F[Unit] =
     edges(Set(src), dst)
+
+  def edges(src: Set[String], dst: String): F[Unit] =
+    edges(src, Set(dst))
 
   def node(
       name: String,
