@@ -14,8 +14,18 @@ object GraphzGenerator {
       outputorder = Some(EdgesFirst),
       margin = Some("0"),
       size = Some("20!"),
-      node = Map("color"    -> "\"#AB0433\"", "shape" -> "point", "height" -> "0.01"),
-      edge = Map("penwidth" -> "0.03", "color"        -> "\"#818181\"")
+      node = Map(
+        "color"  -> "\"#AB0433\"",
+        "shape"  -> "point",
+        "height" -> "0.1"
+      ),
+      edge = Map(
+        "penwidth"  -> "0.3",
+        "color"     -> "\"#818181\"",
+        "fontname"  -> "\"Arial\"",
+        "fontsize"  -> "8",
+        "fontcolor" -> "\"#AB0433\""
+      )
     )
 
   def generate[G[_]: Monad: GraphSerializer](
@@ -41,7 +51,7 @@ object GraphzGenerator {
       g.subgraph {
         for {
           sg <- Graphz.subgraph[G](s"clique_${id.toShortString}", Graph, level)
-          _  <- sg.node(id.toShortString)
+          _  <- sg.node(id.toShortString, color = Some("#55AB04"))
           _  <- sg.edges(id.toShortString, peers.map(_.id.toShortString))
           _ <- clique.members.toList
                 .traverse(generateNetworkHierarchy(sg, level + 1, _, Set(node)))

@@ -191,26 +191,31 @@ object Graphz {
 
 class Graphz[F[_]: Monad](gtype: GraphType, t: String)(implicit ser: GraphSerializer[F]) {
 
+  private val locale    = new java.util.Locale("en", "US")
+  private val formatter = java.text.NumberFormat.getInstance(locale)
+
   def edge(edg: (String, String)): F[Unit] = edges(Set(edg._1), Set(edg._2))
   def edges(
       src: Set[String],
       dst: Set[String],
       style: Option[GraphStyle] = None,
       arrowHead: Option[GraphArrowType] = None
-  ): F[Unit] = {
-    import Graphz.{showArrowType, showStyle}
-    val attrStyle: Map[String, String] = style.map(s => Map("style" -> s.show)).getOrElse(Map.empty)
-    val attrArrowHead: Map[String, String] =
-      arrowHead.map(s => Map("arrowhead" -> s.show)).getOrElse(Map.empty)
-    val attrs: Map[String, String] = attrStyle |+| attrArrowHead
-    ser.push(
-      edgeMkStr.format(
-        Graphz.nodesMkStr(src),
-        Graphz.nodesMkStr(dst),
-        Graphz.attrMkStr(attrs).map(a => " " + a).getOrElse("")
+  ): F[Unit] =
+    if (src.nonEmpty && dst.nonEmpty) {
+      import Graphz.{showArrowType, showStyle}
+      val attrStyle: Map[String, String] =
+        style.map(s => Map("style" -> s.show)).getOrElse(Map.empty)
+      val attrArrowHead: Map[String, String] =
+        arrowHead.map(s => Map("arrowhead" -> s.show)).getOrElse(Map.empty)
+      val attrs: Map[String, String] = attrStyle |+| attrArrowHead
+      ser.push(
+        edgeMkStr.format(
+          Graphz.nodesMkStr(src),
+          Graphz.nodesMkStr(dst),
+          Graphz.attrMkStr(attrs).map(a => " " + a).getOrElse("")
+        )
       )
-    )
-  }
+    } else ().pure[F]
 
   def edges(src: String, dst: Set[String]): F[Unit] =
     edges(Set(src), dst)
@@ -222,6 +227,7 @@ class Graphz[F[_]: Monad](gtype: GraphType, t: String)(implicit ser: GraphSerial
       name: String,
       shape: GraphShape = Circle,
       style: Option[GraphStyle] = None,
+      height: Option[Float] = None,
       color: Option[String] = None,
       label: Option[String] = None
   ): F[Unit] = {
@@ -229,10 +235,14 @@ class Graphz[F[_]: Monad](gtype: GraphType, t: String)(implicit ser: GraphSerial
     val attrShape: Map[String, String] =
       if (shape == Graphz.DefaultShape) Map.empty else Map("shape" -> shape.show)
     val attrStyle: Map[String, String] = style.map(s => Map("style" -> s.show)).getOrElse(Map.empty)
-    val attrColor: Map[String, String] = color.map(c => Map("color" -> c)).getOrElse(Map.empty)
+    val attrColor: Map[String, String] =
+      color.map(c => Map("color" -> Graphz.quote(c))).getOrElse(Map.empty)
+    val attrHeight: Map[String, String] =
+      height.map(c => Map("height" -> formatter.format(c))).getOrElse(Map.empty)
     val attrLabel: Map[String, String] = label.map(c => Map("label" -> c)).getOrElse(Map.empty)
 
-    val attrs: Map[String, String] = attrShape |+| attrColor |+| attrLabel |+| attrStyle
+    val attrs
+        : Map[String, String] = attrShape |+| attrColor |+| attrLabel |+| attrStyle |+| attrHeight
     ser.push(t + Graphz.quote(name) + Graphz.attrMkStr(attrs).map(a => " " + a).getOrElse(""))
   }
 

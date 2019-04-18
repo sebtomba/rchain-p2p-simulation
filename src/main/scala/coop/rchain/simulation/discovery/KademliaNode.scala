@@ -30,8 +30,8 @@ class KademliaNode(
   private implicit val kademliaStore: KademliaStore[Task] = KademliaStore.table[Task](local.id)
   private implicit val nodeDiscovery: NodeDiscovery[Task] = NodeDiscovery.kademlia(local.id)
 
-  override def preStart(): Unit =
-    log.info(s"Starting node ${local.id.toShortString}")
+//  override def preStart(): Unit =
+//    log.info(s"Starting node ${local.id.toShortString}")
 
   def receive: Receive = {
     case Identify => sender ! Identification(local)

@@ -40,24 +40,33 @@ object NetworkTransformer {
       cliqueId: () => NodeIdentifier
   ): NetworkGraph = cliques.foldLeft(graph)((g, c) => replaceByClique(g, c, cliqueId))
 
-  def selectClique(graph: NetworkGraph): Option[Set[NetworkElement]] =
+  def selectCliques(graph: NetworkGraph): Seq[Set[NetworkElement]] =
     GraphTransformer
-      .maximalCliques(GraphTransformer.reduceToUndirectedConnectedGraph(graph))
+      .minimumCliqueCovering(graph)
+      .filter(_.size > 1)
       .sortWith(_.size > _.size)
-      .headOption
 
   def reduceToNetworkOfCliques(
       graph: NetworkGraph,
       cliqueId: () => NodeIdentifier
   ): NetworkGraph = {
-    def loop(g: NetworkGraph, clique: Option[Set[NetworkElement]]): NetworkGraph =
-      clique match {
-        case None => g
-        case Some(c) =>
-          val next = replaceByClique(g, c, cliqueId)
-          loop(next, selectClique(next))
+    def loop(g: NetworkGraph, cliques: Seq[Set[NetworkElement]]): NetworkGraph =
+      cliques match {
+        case Nil => g
+        case cs =>
+          val next = replaceByCliques(g, cs, cliqueId)
+          loop(next, selectCliques(next))
       }
 
-    loop(graph, selectClique(graph))
+    loop(graph, selectCliques(graph))
   }
+
+  def reduceToCliques(
+      graph: NetworkGraph,
+      cliqueId: () => NodeIdentifier
+  ): NetworkGraph =
+    selectCliques(graph) match {
+      case Nil => graph
+      case cs  => replaceByCliques(graph, cs, cliqueId)
+    }
 }

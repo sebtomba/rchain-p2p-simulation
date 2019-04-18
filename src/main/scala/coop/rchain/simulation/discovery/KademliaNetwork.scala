@@ -9,10 +9,10 @@ import cats._
 import cats.data._
 import cats.mtl.implicits._
 
+import coop.rchain.catscontrib.ski.kp
 import coop.rchain.comm.{NodeIdentifier, PeerNode}
 import coop.rchain.graphz.{GraphSerializer, StringSerializer}
 import coop.rchain.simulation.discovery.analysis._
-import coop.rchain.catscontrib.ski.kp
 
 class KademliaNetwork extends Actor with Timers with ActorLogging {
   import KademliaNetwork._
@@ -43,25 +43,50 @@ class KademliaNetwork extends Actor with Timers with ActorLogging {
   @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
   def waitForResults: Receive = {
     case ResultWorker.Results(results) =>
-      type Effect[A] = StateT[Id, StringBuffer, A]
-      implicit val ser: GraphSerializer[Effect] = new StringSerializer[Effect]
+      context.children.foreach(context.stop)
 
 //      implicit val ord: Ordering[PeerNode] =
 //        (x: PeerNode, y: PeerNode) => x.id.toString.compare(y.id.toString)
 //
 //      val comps = GraphTransformer.stronglyConnectedComponents(results)
 //      log.info(s"Found ${comps.size} strongly connected component(s)")
+
+//      val hg = IteratedGreedy.holderGraphFrom(results)
+//      val vs = IteratedGreedy.allVertices(hg).length
+//      log.info(s"number of vertives = $vs")
+//      val es = IteratedGreedy.numberOfEdges(hg)
+//      log.info(s"number of edges = $es")
 //
-//      val cliques =
-//        GraphTransformer.maximalCliques(GraphTransformer.reduceToUndirectedConnectedGraph(results))
-//      val distinctCliques = GraphTransformer.selectCliques(cliques)
-//      log.info(s"Found ${distinctCliques.size} distinct maximal clique(s)")
-//      distinctCliques.zipWithIndex.foreach {
-//        case (ps, i) => log.info(s"clique $i: ${ps.map(_.id.toShortString).mkString(", ")}")
+//      val ub = IteratedGreedy.independenceNumberUpperBound(vs, es)
+//      log.info(s"alpha(G) upper bound p = $ub")
+//      val startAlphaG = System.nanoTime()
+//      val alphaG      = IteratedGreedy.independenceNumber(hg)
+//      val endAlphaG   = Duration.fromNanos(System.nanoTime() - startAlphaG)
+//      log.info(s"Independence Number calculation time: ${endAlphaG.toMillis}ms")
+//      log.info(s"alpha(G) = $alphaG")
+//
+//      val startC = System.nanoTime()
+//      val cs     = IteratedGreedy.minimumCliqueCovering(hg, alphaG)
+//      val endC   = Duration.fromNanos(System.nanoTime() - startC)
+//      log.info(s"Minimum clique covering calculation time: ${endC.toMillis}ms")
+//      log.info(s"Found ${cs.size} minimum covering clique(s)")
+//      cs.zipWithIndex.foreach {
+//        case (ps, i) => log.info(s"clique $i: ${ps.map(_.vertex.id.toShortString).mkString(", ")}")
+//      }
+//
+//      val startBal = System.nanoTime()
+//      val csBal    = IteratedGreedy.balanceCliques(hg, cs)
+//      val endBal   = Duration.fromNanos(System.nanoTime() - startBal)
+//      log.info(s"Clique balancing calculation time: ${endBal.toMillis}ms")
+//      log.info(s"Balanced ${csBal.size} minimum covering clique(s)")
+//      csBal.zipWithIndex.foreach {
+//        case (ps, i) => log.info(s"clique $i: ${ps.map(_.vertex.id.toShortString).mkString(", ")}")
 //      }
 
-      val graph   = NetworkTransformer.networkFromPeerNodes(results)
-      val builder = new StringBuffer()
+      type Effect[A] = StateT[Id, StringBuffer, A]
+      implicit val ser: GraphSerializer[Effect] = new StringSerializer[Effect]
+      val graph                                 = NetworkTransformer.networkFromPeerNodes(results)
+      val builder                               = new StringBuffer()
       builder.append("Result:\n")
       GraphzGenerator
         .generate[Effect](
