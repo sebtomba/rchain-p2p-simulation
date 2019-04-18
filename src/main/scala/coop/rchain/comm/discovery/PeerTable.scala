@@ -53,7 +53,7 @@ object PeerTable {
   // val Width = 256
 
   // Maximum length of each row of the routing table.
-  val Redundancy = 4
+  val Redundancy = 20
 
   // Concurrency factor: system allows up to alpha outstanding network
   // requests at a time.
