@@ -23,49 +23,17 @@ object GraphTransformer {
     getAllPeers(graph).foreach(g.addVertex)
     graph.foreach { case (node, peers) => peers.foreach(g.addEdge(node, _)) }
     val alg = new DegeneracyBronKerboschCliqueFinder(g)
-    alg.asScala.map(_.asScala.toSet).toSeq.sortWith(_.size > _.size)
-  }
-
-  def selectCliques[Vertex](cliques: Seq[Set[Vertex]]): Seq[Set[Vertex]] = {
-    def loop(c: Seq[Set[Vertex]], result: Seq[Set[Vertex]] = Nil): Seq[Set[Vertex]] =
-      c match {
-        case Nil => result
-        case h +: t =>
-          loop(t.map(_ -- h).filter(_.size > 2).sortWith(_.size > _.size), h +: result)
-      }
-
-    loop(cliques).reverse
+    alg.maximumIterator.asScala.map(_.asScala.toSet).toSeq.sortWith(_.size > _.size)
   }
 
   def getAllPeers[Vertex](graph: Graph[Vertex]): Set[Vertex] =
     (graph.keys.toStream ++ graph.values.toStream.flatMap(_.toStream)).toSet
 
-  def reduceToUndirectedConnectedGraph[Vertex: Ordering](graph: Graph[Vertex]): Graph[Vertex] =
-    graph.toStream
-      .flatMap {
-        case (node, peers) =>
-          peers.toStream.map { p =>
-            if (Ordering[Vertex].lt(node, p)) node -> p
-            else p                                 -> node
-          }
-      }
-      .groupBy(identity)
-      .filter(_._2.size > 1) // remove edges that have no adjacent edges
-      .keys
-      .foldLeft(Map.empty[Vertex, Set[Vertex]]) { (acc, p) =>
-        val (p1, p2) = p
-        val s        = acc.getOrElse(p1, Set.empty) + p2
-        acc + (p1 -> s)
-      }
-
-  def removeNodes[Vertex](
-      graph: Graph[Vertex],
-      nodes: Set[Vertex]
-  ): Graph[Vertex] =
-    graph.toStream
-      .filter(e => !nodes.contains(e._1))
-      .map { case (node, peers) => node -> (peers -- nodes) }
-      .filter(_._2.nonEmpty)
-      .toMap
-
+  def minimumCliqueCovering[Vertex](graph: Graph[Vertex]): Seq[Set[Vertex]] = {
+    val hg     = IteratedGreedy.holderGraphFrom(graph)
+    val alphaG = IteratedGreedy.independenceNumber(hg)
+    IteratedGreedy
+      .balanceCliques(hg, IteratedGreedy.minimumCliqueCovering(hg, alphaG))
+      .map(_.map(_.vertex).toSet)
+  }
 }
