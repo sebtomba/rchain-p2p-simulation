@@ -28,11 +28,15 @@ object IteratedGreedy {
 
     val mapping = graph.keys.zipWithIndex.toMap
 
-    graph.map {
+    graph.toList.map {
       case (v, ps) =>
         EdgeHolder[V](
           VertexHolder[V](mapping(v), v),
-          ps.filter(isNeighbour(v, _)).map(p => VertexHolder(mapping(p), p)).toArray.sortBy(_.id)
+          ps.toList
+            .filter(isNeighbour(v, _))
+            .map(p => VertexHolder(mapping(p), p))
+            .sortBy(_.id)
+            .toArray
         )
     }.toArray
   }
@@ -101,29 +105,36 @@ object IteratedGreedy {
     iterate(all, all)
   }
 
-  def minimumCliqueCovering[V](
+  def greedyCliqueCovering[V](
       graph: Array[EdgeHolder[V]],
-      k: Int = 1,
-      iterations: Int = 10000
+      vertices: Array[VertexHolder[V]]
   ): Seq[Seq[VertexHolder[V]]] = {
     implicit val ord: Ordering[VertexHolder[V]] = implicits.vertexHolderOrdering
 
     @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-    def greedy(
-        vs: Array[VertexHolder[V]],
+    def loop(
         i: Int = 0,
         acc: mutable.MutableList[mutable.MutableList[VertexHolder[V]]] = mutable.MutableList.empty
     ): Seq[Seq[VertexHolder[V]]] =
-      if (i < vs.length) {
-        val peers = graph(vs(i).id).peers
+      if (i < vertices.length) {
+        val peers = graph(vertices(i).id).peers
         val q = acc.find(_.forall(contains(peers, _))).getOrElse {
           val l = mutable.MutableList.empty[VertexHolder[V]]
           acc += l
           l
         }
-        q += vs(i)
-        greedy(vs, i + 1, acc)
+        q += vertices(i)
+        loop(i + 1, acc)
       } else acc
+
+    loop()
+  }
+
+  def minimumCliqueCovering[V](
+      graph: Array[EdgeHolder[V]],
+      k: Int = 1,
+      iterations: Int = 10000
+  ): Seq[Seq[VertexHolder[V]]] = {
 
     def iterate(
         perm: Array[VertexHolder[V]],
@@ -131,8 +142,14 @@ object IteratedGreedy {
         best: Seq[Seq[VertexHolder[V]]],
         i: Int = iterations
     ): Seq[Seq[VertexHolder[V]]] =
-      if (acc.length <= k || i <= 0) pickBest(acc, best)
-      else iterate(shuffle(acc.toArray).flatten, greedy(perm), pickBest(acc, best), i - 1)
+      if (acc.length <= k || i <= 1) pickBest(acc, best)
+      else
+        iterate(
+          shuffle(acc.toArray).flatten,
+          greedyCliqueCovering(graph, perm),
+          pickBest(acc, best),
+          i - 1
+        )
 
     def pickBest(
         a: Seq[Seq[VertexHolder[V]]],
@@ -141,7 +158,7 @@ object IteratedGreedy {
       if (a.size < b.size) a else b
 
     val all   = allVertices(graph)
-    val start = greedy(all)
+    val start = greedyCliqueCovering(graph, all)
     iterate(all, start, start)
   }
 

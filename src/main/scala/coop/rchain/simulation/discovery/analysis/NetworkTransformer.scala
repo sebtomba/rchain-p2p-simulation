@@ -46,6 +46,23 @@ object NetworkTransformer {
       .filter(_.size > 1)
       .sortWith(_.size > _.size)
 
+  def selectCliquesByCliqueSize(graph: NetworkGraph): Seq[Set[NetworkElement]] = {
+    val hg = IteratedGreedy.holderGraphFrom(graph)
+    val nodes = IteratedGreedy.allVertices(hg).sortWith { (v1, v2) =>
+      (v1.vertex.networkHierarchy, v2.vertex.networkHierarchy) match {
+        case (Clique(m1), Clique(m2)) => m1.size < m2.size
+        case (Clique(_), Leaf)        => false
+        case (Leaf, Clique(_))        => true
+        case _                        => hg(v1.id).peers.length < hg(v2.id).peers.length
+      }
+    }
+    IteratedGreedy
+      .balanceCliques(hg, IteratedGreedy.greedyCliqueCovering(hg, nodes))
+      .map(_.map(_.vertex).toSet)
+      .filter(_.size > 1)
+      .sortWith(_.size > _.size)
+  }
+
   def reduceToNetworkOfCliques(
       graph: NetworkGraph,
       cliqueId: () => NodeIdentifier
@@ -55,18 +72,9 @@ object NetworkTransformer {
         case Nil => g
         case cs =>
           val next = replaceByCliques(g, cs, cliqueId)
-          loop(next, selectCliques(next))
+          loop(next, selectCliquesByCliqueSize(next))
       }
 
     loop(graph, selectCliques(graph))
   }
-
-  def reduceToCliques(
-      graph: NetworkGraph,
-      cliqueId: () => NodeIdentifier
-  ): NetworkGraph =
-    selectCliques(graph) match {
-      case Nil => graph
-      case cs  => replaceByCliques(graph, cs, cliqueId)
-    }
 }
