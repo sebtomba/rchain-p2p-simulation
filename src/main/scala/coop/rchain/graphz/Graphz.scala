@@ -229,6 +229,7 @@ class Graphz[F[_]: Monad](gtype: GraphType, t: String)(implicit ser: GraphSerial
       style: Option[GraphStyle] = None,
       height: Option[Float] = None,
       color: Option[String] = None,
+      fillcolor: Option[String] = None,
       label: Option[String] = None
   ): F[Unit] = {
     import Graphz.{showShape, showStyle}
@@ -237,12 +238,14 @@ class Graphz[F[_]: Monad](gtype: GraphType, t: String)(implicit ser: GraphSerial
     val attrStyle: Map[String, String] = style.map(s => Map("style" -> s.show)).getOrElse(Map.empty)
     val attrColor: Map[String, String] =
       color.map(c => Map("color" -> Graphz.quote(c))).getOrElse(Map.empty)
+    val attrFillcolor: Map[String, String] =
+      fillcolor.map(c => Map("fillcolor" -> Graphz.quote(c))).getOrElse(Map.empty)
     val attrHeight: Map[String, String] =
       height.map(c => Map("height" -> formatter.format(c))).getOrElse(Map.empty)
     val attrLabel: Map[String, String] = label.map(c => Map("label" -> c)).getOrElse(Map.empty)
 
-    val attrs
-        : Map[String, String] = attrShape |+| attrColor |+| attrLabel |+| attrStyle |+| attrHeight
+    val attrs: Map[String, String] =
+      attrShape |+| attrColor |+| attrFillcolor |+| attrLabel |+| attrStyle |+| attrHeight
     ser.push(t + Graphz.quote(name) + Graphz.attrMkStr(attrs).map(a => " " + a).getOrElse(""))
   }
 

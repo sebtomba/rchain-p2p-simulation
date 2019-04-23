@@ -17,11 +17,12 @@ object NetworkTransformer {
     }
 
   def replaceByClique(
+      level: Int,
       graph: NetworkGraph,
       clique: Set[NetworkElement],
       cliqueId: () => NodeIdentifier
   ): NetworkGraph = {
-    val c   = NetworkElement(cliqueId(), Clique(clique))
+    val c   = NetworkElement(cliqueId(), Clique(level, clique))
     val cps = clique.flatMap(graph.getOrElse(_, Nil)) -- clique
     graph.toStream
       .filter(e => !clique.contains(e._1))
@@ -35,10 +36,11 @@ object NetworkTransformer {
   }
 
   def replaceByCliques(
+      level: Int,
       graph: NetworkGraph,
       cliques: Seq[Set[NetworkElement]],
       cliqueId: () => NodeIdentifier
-  ): NetworkGraph = cliques.foldLeft(graph)((g, c) => replaceByClique(g, c, cliqueId))
+  ): NetworkGraph = cliques.foldLeft(graph)((g, c) => replaceByClique(level, g, c, cliqueId))
 
   def selectCliques(graph: NetworkGraph): Seq[Set[NetworkElement]] =
     GraphTransformer
@@ -50,10 +52,10 @@ object NetworkTransformer {
     val hg = IteratedGreedy.holderGraphFrom(graph)
     val nodes = IteratedGreedy.allVertices(hg).sortWith { (v1, v2) =>
       (v1.vertex.networkHierarchy, v2.vertex.networkHierarchy) match {
-        case (Clique(m1), Clique(m2)) => m1.size < m2.size
-        case (Clique(_), Leaf)        => false
-        case (Leaf, Clique(_))        => true
-        case _                        => hg(v1.id).peers.length < hg(v2.id).peers.length
+        case (Clique(_, m1), Clique(_, m2)) => m1.size < m2.size
+        case (Clique(_, _), Leaf)           => false
+        case (Leaf, Clique(_, _))           => true
+        case _                              => hg(v1.id).peers.length < hg(v2.id).peers.length
       }
     }
     IteratedGreedy
@@ -67,14 +69,14 @@ object NetworkTransformer {
       graph: NetworkGraph,
       cliqueId: () => NodeIdentifier
   ): NetworkGraph = {
-    def loop(g: NetworkGraph, cliques: Seq[Set[NetworkElement]]): NetworkGraph =
+    def loop(level: Int, g: NetworkGraph, cliques: Seq[Set[NetworkElement]]): NetworkGraph =
       cliques match {
         case Nil => g
         case cs =>
-          val next = replaceByCliques(g, cs, cliqueId)
-          loop(next, selectCliquesByCliqueSize(next))
+          val next = replaceByCliques(level, g, cs, cliqueId)
+          loop(level + 1, next, selectCliquesByCliqueSize(next))
       }
 
-    loop(graph, selectCliques(graph))
+    loop(1, graph, selectCliques(graph))
   }
 }

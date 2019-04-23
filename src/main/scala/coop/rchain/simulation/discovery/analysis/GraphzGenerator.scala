@@ -6,6 +6,53 @@ import cats.implicits._
 import coop.rchain.graphz._
 
 object GraphzGenerator {
+
+  private val palette =
+    Array(
+      "#4FAB04",
+      "#046BAB",
+      "#AB0487",
+      "#A3AB04",
+      "#04AB98",
+      "#7C04AB",
+      "#AB6004",
+      "#04AB44",
+      "#2804AB",
+      "#AB0C04",
+      "#17AB04",
+      "#0433AB",
+      "#AB044F",
+      "#6BAB04",
+      "#0487AB",
+      "#AB04A3",
+      "#AB9804",
+      "#04AB7C",
+      "#6004AB",
+      "#AB4404",
+      "#04AB28",
+      "#0C04AB",
+      "#AB0417",
+      "#33AB04",
+      "#044FAB",
+      "#AB046B",
+      "#87AB04",
+      "#04A3AB",
+      "#9804AB",
+      "#AB7C04",
+      "#04AB60",
+      "#4404AB",
+      "#AB2804",
+      "#04AB0C",
+      "#0417AB",
+      "#AB0433"
+    )
+
+  private def cliqueColor(clique: Clique): String =
+    palette((clique.level - 1) % palette.length)
+
+  private def cliqueHeight(clique: Clique): Float =
+    0.1f + 0.02f * clique.level
+
   private def initGraph[G[_]: Monad: GraphSerializer](name: String): G[Graphz[G]] =
     Graphz[G](
       name,
@@ -15,9 +62,11 @@ object GraphzGenerator {
       margin = Some("0"),
       size = Some("20!"),
       node = Map(
-        "color"  -> "\"#AB0433\"",
-        "shape"  -> "point",
-        "height" -> "0.1"
+        "color"     -> "\"#ECECEC\"",
+        "fillcolor" -> "\"#AB0433\"",
+        "shape"     -> "point",
+        "height"    -> "0.1",
+        "penwidth"  -> "0.3"
       ),
       edge = Map(
         "penwidth"  -> "0.3",
@@ -47,12 +96,16 @@ object GraphzGenerator {
   ): G[Unit] = node match {
     case NetworkElement(id, Leaf) =>
       g.edges(id.toShortString, peers.map(_.id.toShortString))
-    case NetworkElement(id, clique @ Clique(_)) =>
+    case NetworkElement(id, clique: Clique) =>
       g.subgraph {
         for {
           sg <- Graphz.subgraph[G](s"clique_${id.toShortString}", Graph, level)
-          _  <- sg.node(id.toShortString, color = Some("#55AB04"))
-          _  <- sg.edges(id.toShortString, peers.map(_.id.toShortString))
+          _ <- sg.node(
+                id.toShortString,
+                height = Some(cliqueHeight(clique)),
+                fillcolor = Some(cliqueColor(clique))
+              )
+          _ <- sg.edges(id.toShortString, peers.map(_.id.toShortString))
           _ <- clique.members.toList
                 .traverse(generateNetworkHierarchy(sg, level + 1, _, Set(node)))
           _ <- sg.close
