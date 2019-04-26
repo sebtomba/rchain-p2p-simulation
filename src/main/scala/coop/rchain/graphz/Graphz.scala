@@ -1,6 +1,6 @@
 package coop.rchain.graphz
 
-import java.io.FileOutputStream
+import java.io.Writer
 
 import cats._
 import cats.effect.Sync
@@ -17,11 +17,12 @@ class StringSerializer[F[_]: Applicative: MonadState[?[_], StringBuffer]]
     MonadState[F, StringBuffer].modify(sb => sb.append(str + suffix))
 }
 
-class FileSerializer[F[_]: Sync](fos: FileOutputStream) extends GraphSerializer[F] {
-  def push(str: String, suffix: String): F[Unit] = Sync[F].delay {
-    fos.write(str.getBytes)
-    fos.flush()
-  }
+class WriterSerializer[F[_]: Sync](w: Writer) extends GraphSerializer[F] {
+  def push(str: String, suffix: String): F[Unit] =
+    Sync[F].delay {
+      w.write(str + suffix)
+      w.flush()
+    }
 }
 
 sealed trait GraphType

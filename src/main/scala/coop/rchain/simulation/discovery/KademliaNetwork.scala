@@ -5,13 +5,8 @@ import scala.util.Random
 
 import akka.actor._
 
-import cats._
-import cats.data._
-import cats.mtl.implicits._
-
 import coop.rchain.catscontrib.ski.kp
 import coop.rchain.comm.{NodeIdentifier, PeerNode}
-import coop.rchain.graphz.{GraphSerializer, StringSerializer}
 import coop.rchain.simulation.discovery.analysis._
 
 class KademliaNetwork extends Actor with Timers with ActorLogging {
@@ -83,18 +78,7 @@ class KademliaNetwork extends Actor with Timers with ActorLogging {
 //        case (ps, i) => log.info(s"clique $i: ${ps.map(_.vertex.id.toShortString).mkString(", ")}")
 //      }
 
-      type Effect[A] = StateT[Id, StringBuffer, A]
-      implicit val ser: GraphSerializer[Effect] = new StringSerializer[Effect]
-      val graph                                 = NetworkTransformer.networkFromPeerNodes(results)
-      val builder                               = new StringBuffer()
-      builder.append("Result:\n")
-      GraphzGenerator
-        .generate[Effect](
-          NetworkTransformer.reduceToNetworkOfCliques(graph, () => nodeIdentifier())
-        )
-        .runS(builder)
-      log.info(builder.toString)
-
+      Reporter.reportNetwork(results, () => nodeIdentifier())
       context.stop(self)
   }
 

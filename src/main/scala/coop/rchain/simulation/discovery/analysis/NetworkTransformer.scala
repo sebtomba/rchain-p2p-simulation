@@ -79,4 +79,18 @@ object NetworkTransformer {
 
     loop(1, graph, selectCliques(graph))
   }
+
+  def reduceToCliques(
+      graph: NetworkGraph,
+      cliqueId: () => NodeIdentifier
+  ): NetworkGraph = {
+    def loop(level: Int, g: NetworkGraph, cliques: Seq[Set[NetworkElement]]): NetworkGraph =
+      cliques match {
+        case Nil => g
+        case cs  => replaceByCliques(level, g, cs, cliqueId)
+      }
+
+    loop(1, graph, selectCliques(graph))
+  }
+
 }

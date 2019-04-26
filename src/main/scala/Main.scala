@@ -14,7 +14,7 @@ object Main {
 
     try {
       val network = system.actorOf(KademliaNetwork.props)
-      network ! Spawn(1000, 40.seconds)
+      network ! Spawn(5000, 120.seconds)
       ActorTerminator.awaitTermination(network)
     } finally {
       system.terminate()
